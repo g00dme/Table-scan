@@ -28,15 +28,15 @@ def compute_lines_pixels(img,vert):
     if vert=='v':
         kernel = cv.getStructuringElement(cv.MORPH_RECT,(1,img.shape[0]//15))
         lines = cv.morphologyEx(img,cv.MORPH_CLOSE,kernel,iterations=1)
-        lines = cv.morphologyEx(img,cv.MORPH_OPEN,kernel,iterations=1)
-        linues_sum=lines.sum(axis=0)
+        lines_pr = cv.morphologyEx(img,cv.MORPH_OPEN,kernel,iterations=1)
+        linues_sum=lines_pr.sum(axis=0)
         ys=np.where(linues_sum>255*img.shape[0]*0.22)[0]
     else:
-        kernel = cv.getStructuringElement(cv.MORPH_RECT,(img.shape[1]//20,1))
+        kernel = cv.getStructuringElement(cv.MORPH_RECT,(img.shape[1]//15,1))
         lines = cv.morphologyEx(img,cv.MORPH_CLOSE,kernel,iterations=1)
-        lines = cv.morphologyEx(img,cv.MORPH_OPEN,kernel,iterations=1)
+        lines_pr = cv.morphologyEx(img,cv.MORPH_OPEN,kernel,iterations=1)
 
-        linues_sum=lines.sum(axis=1)
+        linues_sum=lines_pr.sum(axis=1)
         ys=np.where(linues_sum>58_000 )[0]
         
     groups=[]
@@ -50,7 +50,7 @@ def compute_lines_pixels(img,vert):
     for group in groups:
         line=int(np.average(group))
         lines.append(line)
-    return lines
+    return lines, lines_pr
 
 
 def deskew_image(img): 
@@ -67,9 +67,9 @@ def deskew_image(img):
     )
 
     angles = []
-
-    for line in lines[:, 0]:
-        x1, y1,x2,y2 = line
+    # print(lines)
+    lines = lines.reshape(-1, 4)
+    for x1, y1,x2,y2 in lines:
         angle=np.degrees(np.arctan2(y2-y1,x2-x1))
 
         if -15 < angle < 15:
@@ -90,8 +90,8 @@ def crop_image(img):
 
     _,tresh=cv.threshold(gray,150,255,cv.THRESH_BINARY_INV)
 
-    h_lines=compute_lines_pixels(tresh,'h')
-    v_lines=compute_lines_pixels(tresh,'v')
+    h_lines,_=compute_lines_pixels(tresh,'h')
+    v_lines,_=compute_lines_pixels(tresh,'v')
 
     print(len(h_lines))
     print(len(v_lines))
@@ -99,7 +99,7 @@ def crop_image(img):
     h_line_top=np.unique(np.array(h_lines))[4]
     h_line_bottom=np.unique(np.array(h_lines))[4+12]
     v_line_left=np.unique(np.array(v_lines))[1]
-    v_line_right=np.unique(np.array(v_lines))[1+19]
+    v_line_right=np.unique(np.array(v_lines))[1+20]
 
     cropped_img = tresh[h_line_top:h_line_bottom,v_line_left:v_line_right]
     cropped_img_org = deskewed[h_line_top:h_line_bottom,v_line_left:v_line_right]
